@@ -37,7 +37,6 @@ import { AdminLoginPage } from "./components/AdminLoginPage";
 import { AuthorNotificationsPage } from "./components/AuthorNotificationsPage";
 import { AuthorEditProfilePage } from "./components/AuthorEditProfilePage";
 import { Toaster } from "./components/ui/sonner";
-import { LandingPage } from "./components/LandingPage";
 import { UserDashboard } from "./components/UserDashboard";
 import { AuthorDashboard } from "./components/AuthorDashboard";
 import { BrowseBooksPage } from "./components/BrowseBooksPage";
@@ -121,6 +120,9 @@ export default function App() {
     | "author-profile"
     | "list-view"
     | "user-profile"
+    | "settings"
+    | "author-notifications"
+    | "author-edit-profile"
   >("home");
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [selectedBookId, setSelectedBookId] =
@@ -485,7 +487,7 @@ export default function App() {
   };
 
   // Function to follow an author
-  const handleFollowAuthor = (author: Author) => {
+  const handleFollowAuthor = (author: any) => {
     // Prevent admins from following
     if (currentUser.isAdmin) {
       toast.error("Admins cannot follow authors");
@@ -493,7 +495,7 @@ export default function App() {
     }
     
     // Prevent authors from following themselves
-    if (isAuthorLoggedIn && author.email === currentAuthor.email) {
+    if (isAuthorLoggedIn && author.email && author.email === currentAuthor.email) {
       toast.error("You cannot follow yourself");
       return;
     }
@@ -1137,11 +1139,17 @@ export default function App() {
             const isAdmin = userData.email === "lendaranda@gmail.com" || userData.email === "omar@gmail.com";
             
             setCurrentUser({ 
-              ...userData, 
+              id: 1,
+              username: userData.username,
+              email: userData.email,
               avatarUrl: "",
               verificationStatus: verificationStatus,
               isAdmin: isAdmin,
-              isPrivate: isAdmin ? true : userData.isPrivate  // Admin profiles are always private
+              isPrivate: isAdmin ? true : false,
+              bio: "Book lover and avid reader. Always looking for the next great story!",
+              location: "New York, USA",
+              website: "",
+              joinDate: "January 2024",
             });
             setIsUserLoggedIn(true);
             setCurrentPage("dashboard");
@@ -1168,11 +1176,17 @@ export default function App() {
             const isAdmin = userData.email === "lendaranda@gmail.com" || userData.email === "omar@gmail.com";
             
             setCurrentUser({ 
-              ...userData, 
+              id: 1,
+              username: userData.username,
+              email: userData.email,
               avatarUrl: "",
               verificationStatus: verificationStatus,
               isAdmin: isAdmin,
-              isPrivate: isAdmin ? true : userData.isPrivate  // Admin profiles are always private
+              isPrivate: isAdmin ? true : false,
+              bio: "Book lover and avid reader. Always looking for the next great story!",
+              location: "New York, USA",
+              website: "",
+              joinDate: "January 2024",
             });
             setIsUserLoggedIn(true);
             setCurrentPage("dashboard");
@@ -1358,7 +1372,11 @@ export default function App() {
           onLogoClick={() => setCurrentPage("home")}
           currentAuthor={currentAuthor}
           onSave={(updatedAuthor) => {
-            setCurrentAuthor(updatedAuthor);
+            setCurrentAuthor({
+              name: updatedAuthor.name,
+              email: updatedAuthor.email,
+              avatarUrl: updatedAuthor.avatarUrl || "",
+            });
             setCurrentPage("author-dashboard");
           }}
           onLogout={handleAuthorLogout}
@@ -1374,25 +1392,15 @@ export default function App() {
     return (
       <>
         <AdminDashboard
+          currentUser={{
+            name: currentUser.username,
+            email: currentUser.email,
+            avatarUrl: currentUser.avatarUrl,
+            isAdmin: currentUser.isAdmin,
+          }}
+          onNavigateToProfile={() => setCurrentPage("user-profile")}
+          onNavigateToAdminReports={() => setCurrentPage("admin-reports")}
           onLogout={() => setCurrentPage("home")}
-          onLogoClick={() => setCurrentPage("home")}
-          onViewReports={() => setCurrentPage("admin-reports")}
-          onViewAuthorProfile={(authorId) => {
-            setSelectedAuthorId(authorId);
-            setCurrentPage("author-profile");
-          }}
-          onViewBookDetails={(bookId) => {
-            setSelectedBookId(bookId);
-            setPreviousPage("browse");
-            setCurrentPage("book-details");
-          }}
-          pendingVerificationRequests={pendingVerificationRequests}
-          onHandleVerification={handleVerificationApproval}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          reports={reports}
-          onResolveReport={handleResolveReport}
-          onDismissReport={handleDismissReport}
         />
         <Toaster />
       </>
@@ -1473,20 +1481,34 @@ export default function App() {
       <>
         <BookDetailsPage
           book={book}
-          onBack={() => setCurrentPage(previousPage)}
+          onBack={() => {
+            const validPages = [
+              "home", "login", "register", "author", "author-verification", 
+              "author-registration", "admin", "dashboard", "author-dashboard", 
+              "admin-dashboard", "admin-reports", "browse", "book-details", 
+              "notifications", "about", "contact", "subscription", "chat", 
+              "edit-profile", "author-profile", "list-view", "user-profile", 
+              "settings", "author-notifications", "author-edit-profile"
+            ];
+            if (validPages.includes(previousPage)) {
+              setCurrentPage(previousPage as typeof currentPage);
+            } else {
+              setCurrentPage("home");
+            }
+          }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onLogoClick={() => setCurrentPage("home")}
           isUserLoggedIn={isUserLoggedIn}
           onLoginRequired={() => setCurrentPage("login")}
           userLists={userLists}
           setUserLists={setUserLists}
-          theme={theme}
-          onToggleTheme={toggleTheme}
           userReviews={userReviews.bookReviews[selectedBookId] || []}
           onAddReview={(rating, reviewText) => handleAddBookReview(selectedBookId, rating, reviewText)}
           helpfulReviews={helpfulReviews}
           onToggleHelpful={handleToggleHelpful}
           onReportSubmit={handleReportSubmit}
-          onAuthorClick={(authorName) => {
+          onAuthorClick={(authorName: string) => {
             const authorProfile = getAuthorProfile(authorName);
             setSelectedAuthorId(authorProfile.id);
             setCurrentPage("author-profile");
@@ -1562,7 +1584,11 @@ export default function App() {
         onLogoClick={() => setCurrentPage("home")}
         currentUser={currentUser}
         onSave={(updatedUser) => {
-          setCurrentUser(updatedUser);
+          setCurrentUser({
+            ...currentUser,
+            ...updatedUser,
+            avatarUrl: updatedUser.avatarUrl || "",
+          });
           setCurrentPage("dashboard");
         }}
         onLogout={handleUserLogout}
@@ -1580,7 +1606,7 @@ export default function App() {
         onToggleTheme={toggleTheme}
         isPrivate={currentUser.isPrivate}
         onTogglePrivacy={handleTogglePrivacy}
-        userName={currentUser.name}
+        userName={currentUser.username}
       />
     );
   }

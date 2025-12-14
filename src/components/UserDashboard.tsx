@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import { toast } from "sonner";
 
 interface UserDashboardProps {
   onLogout: () => void;
@@ -31,6 +32,7 @@ interface UserDashboardProps {
   onViewSubscription?: () => void;
   onViewChat?: () => void;
   onEditProfile?: () => void;
+  onViewSettings?: () => void;
   onViewBookDetails?: (bookId: number) => void;
   onBecomeAuthor?: () => void;
   onViewAdminDashboard?: () => void;
@@ -86,7 +88,7 @@ interface UserDashboardProps {
   onToggleTheme: () => void;
 }
 
-export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onViewSubscription, onViewChat, onEditProfile, onViewBookDetails, onBecomeAuthor, onViewAdminDashboard, onViewAuthorDashboard, currentUser, userLists, setUserLists, listIcons, onViewList, followedAuthors, onUnfollowAuthor, onViewAuthorProfile, followedUsers, onUnfollowUser, onViewUserProfile, followRequests, onAcceptFollowRequest, onRejectFollowRequest, theme, onToggleTheme }: UserDashboardProps) {
+export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onViewSubscription, onViewChat, onEditProfile, onViewSettings, onViewBookDetails, onBecomeAuthor, onViewAdminDashboard, onViewAuthorDashboard, currentUser, userLists, setUserLists, listIcons, onViewList, followedAuthors, onUnfollowAuthor, onViewAuthorProfile, followedUsers, onUnfollowUser, onViewUserProfile, followRequests, onAcceptFollowRequest, onRejectFollowRequest, theme, onToggleTheme }: UserDashboardProps) {
   const [unreadCount] = useState(3);
   const [isCreateListOpen, setIsCreateListOpen] = useState(false);
   const [newListName, setNewListName] = useState("");
@@ -181,6 +183,12 @@ export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onVi
   };
 
   const handleCreateList = () => {
+    // Prevent admins from creating lists
+    if (currentUser.isAdmin) {
+      toast.error("Admins cannot create reading lists");
+      return;
+    }
+    
     if (!newListName.trim()) return;
     
     const newList = {
@@ -227,19 +235,21 @@ export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onVi
           {/* Right: Icons */}
           <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
             {/* Notifications */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleNotificationClick}
-              className="relative"
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </Button>
+            {!currentUser.isAdmin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNotificationClick}
+                className="relative"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </Button>
+            )}
 
             {/* Theme Toggle */}
             <ThemeToggle theme={theme} onToggle={onToggleTheme} />
@@ -280,10 +290,12 @@ export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onVi
                   <FileText className="w-4 h-4 mr-2" />
                   My Reviews
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onEditProfile}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
+                {!currentUser.isAdmin && (
+                  <DropdownMenuItem onClick={onViewSettings}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </DropdownMenuItem>
+                )}
                 {currentUser.isAdmin && (
                   <>
                     <Separator className="my-2" />
@@ -326,38 +338,44 @@ export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onVi
                 <User className="w-4 h-4 mr-3" />
                 My Profile
               </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={onViewNotifications}
-              >
-                <Bell className="w-4 h-4 mr-3" />
-                Notifications
-                {unreadCount > 0 && (
-                  <Badge className="ml-auto bg-destructive">{unreadCount}</Badge>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={onViewSubscription}
-              >
-                <Crown className="w-4 h-4 mr-3" />
-                Subscription
-              </Button>
+              {!currentUser.isAdmin && (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={onViewNotifications}
+                  >
+                    <Bell className="w-4 h-4 mr-3" />
+                    Notifications
+                    {unreadCount > 0 && (
+                      <Badge className="ml-auto bg-destructive">{unreadCount}</Badge>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start"
+                    onClick={onViewSubscription}
+                  >
+                    <Crown className="w-4 h-4 mr-3" />
+                    Subscription
+                  </Button>
+                </>
+              )}
             </div>
 
             <Separator className="my-6" />
 
             <div className="space-y-1">
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={onEditProfile}
-              >
-                <Settings className="w-4 h-4 mr-3" />
-                Settings
-              </Button>
+              {!currentUser.isAdmin && (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={onViewSettings}
+                >
+                  <Settings className="w-4 h-4 mr-3" />
+                  Settings
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 className="w-full justify-start"
@@ -396,275 +414,285 @@ export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onVi
               {/* Welcome Message */}
               <div>
                 <h1 className="text-3xl mb-2">Welcome back, {userName}!</h1>
-                <p className="text-muted-foreground">Ready to discover your next favorite book?</p>
+                {!currentUser.isAdmin && (
+                  <p className="text-muted-foreground">Ready to discover your next favorite book?</p>
+                )}
               </div>
 
               {/* Personalized Recommendations */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Recommended for You
-                  </CardTitle>
-                  <CardDescription>Based on your reading history and preferences</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {recommendations.map((book) => (
-                      <button 
-                        key={book.id} 
-                        className="flex gap-4 p-4 rounded-lg border border-border hover:border-primary transition-colors cursor-pointer text-left"
-                        onClick={() => onViewBookDetails && onViewBookDetails(book.id)}
-                      >
-                        <div className="w-20 h-28 bg-gradient-to-br from-primary to-primary/60 rounded flex-shrink-0 flex items-center justify-center">
-                          <BookOpen className="w-8 h-8 text-white opacity-50" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="line-clamp-1 mb-1">{book.title}</h4>
-                          <p className="text-sm text-muted-foreground mb-2">{book.author}</p>
-                          <div className="flex items-center gap-1 mb-2">
-                            <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                            <span className="text-sm">{book.rating}</span>
+              {!currentUser.isAdmin && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Recommended for You
+                    </CardTitle>
+                    <CardDescription>Based on your reading history and preferences</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {recommendations.map((book) => (
+                        <button 
+                          key={book.id} 
+                          className="flex gap-4 p-4 rounded-lg border border-border hover:border-primary transition-colors cursor-pointer text-left"
+                          onClick={() => onViewBookDetails && onViewBookDetails(book.id)}
+                        >
+                          <div className="w-20 h-28 bg-gradient-to-br from-primary to-primary/60 rounded flex-shrink-0 flex items-center justify-center">
+                            <BookOpen className="w-8 h-8 text-white opacity-50" />
                           </div>
-                          <p className="text-xs text-muted-foreground italic">{book.reason}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="line-clamp-1 mb-1">{book.title}</h4>
+                            <p className="text-sm text-muted-foreground mb-2">{book.author}</p>
+                            <div className="flex items-center gap-1 mb-2">
+                              <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                              <span className="text-sm">{book.rating}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground italic">{book.reason}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Book Discussions Section */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <MessageSquare className="w-5 h-5" />
-                      Book Discussions
-                    </CardTitle>
-                    <CardDescription>Join the conversation about your favorite books</CardDescription>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={onViewChat}
-                  >
-                    View All Discussions
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentDiscussions.map((discussion) => (
-                      <div 
-                        key={discussion.id} 
-                        className="p-4 rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
-                        onClick={onViewChat}
-                      >
-                        <div className="flex gap-3">
-                          <Avatar className="w-10 h-10 border-2 border-primary/20">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {discussion.userInitials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <div>
-                                <span className="text-sm">{discussion.userName}</span>
-                                <span className="text-sm text-muted-foreground"> • {discussion.timestamp}</span>
-                              </div>
-                            </div>
-                            <div className="mb-2">
-                              <Badge variant="outline" className="text-xs mb-2">
-                                {discussion.bookTitle} by {discussion.author}
-                              </Badge>
-                            </div>
-                            <p className="text-sm mb-3 line-clamp-2">{discussion.content}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                                <ThumbsUp className="w-4 h-4" />
-                                <span>{discussion.likes}</span>
-                              </button>
-                              <button className="flex items-center gap-1 hover:text-primary transition-colors">
-                                <MessageSquare className="w-4 h-4" />
-                                <span>{discussion.replies} {discussion.replies === 1 ? 'reply' : 'replies'}</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* My Lists */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <List className="w-5 h-5" />
-                      My Lists
-                    </CardTitle>
-                    <CardDescription>Create and manage your custom reading collections</CardDescription>
-                  </div>
-                  <Button 
-                    variant="default"
-                    size="sm"
-                    onClick={() => setIsCreateListOpen(true)}
-                    className="gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Create List
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {/* Default Lists */}
-                    {defaultLists.map((list) => {
-                      const Icon = list.icon;
-                      return (
-                        <div
-                          key={list.id}
-                          className="p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
-                        >
-                          <div className="w-full text-left">
-                            <button 
-                              className="w-full text-left hover:opacity-80 transition-opacity"
-                              onClick={() => onViewList && onViewList(list)}
-                            >
-                              <Icon className="w-6 h-6 text-primary mb-2" />
-                              <h4 className="text-sm mb-1">{list.name}</h4>
-                              <p className="text-2xl">{list.count}</p>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Custom Lists */}
-                    {customLists.map((list) => {
-                      const Icon = list.icon;
-                      return (
-                        <div
-                          key={list.id}
-                          className="relative group p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
-                        >
-                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => {
-                                    setEditingListId(list.id);
-                                    setEditListName(list.name);
-                                  }}
-                                >
-                                  <Edit2 className="w-4 h-4 mr-2" />
-                                  Rename List
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteList(list.id)}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete List
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <div className="w-full text-left">
-                            <button 
-                              className="w-full text-left hover:opacity-80 transition-opacity"
-                              onClick={() => onViewList && onViewList(list)}
-                            >
-                              <Icon className="w-6 h-6 text-primary mb-2" />
-                              <h4 className="text-sm mb-1 pr-8">{list.name}</h4>
-                              <p className="text-2xl">{list.count}</p>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Followed Authors */}
-              <Card>
-                <CardHeader>
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      Followed Authors
-                    </CardTitle>
-                    <CardDescription>
-                      Keep up with your favorite authors
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {followedAuthors.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p className="mb-2">You haven't followed any authors yet</p>
-                      <p className="text-sm">Discover authors and follow them to stay updated</p>
+              {!currentUser.isAdmin && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5" />
+                        Book Discussions
+                      </CardTitle>
+                      <CardDescription>Join the conversation about your favorite books</CardDescription>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {followedAuthors.map((author) => (
-                        <div
-                          key={author.id}
-                          className="p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={onViewChat}
+                    >
+                      View All Discussions
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {recentDiscussions.map((discussion) => (
+                        <div 
+                          key={discussion.id} 
+                          className="p-4 rounded-lg border border-border hover:border-primary transition-colors cursor-pointer"
+                          onClick={onViewChat}
                         >
                           <div className="flex gap-3">
-                            <Avatar className="w-12 h-12 flex-shrink-0 border-2 border-primary/20">
-                              <AvatarImage src={author.avatarUrl} alt={author.name} />
+                            <Avatar className="w-10 h-10 border-2 border-primary/20">
                               <AvatarFallback className="bg-primary/10 text-primary">
-                                {author.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                {discussion.userInitials}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <button
-                                onClick={() => onViewAuthorProfile && onViewAuthorProfile(author.name)}
-                                className="text-left w-full group"
-                              >
-                                <h4 className="mb-1 line-clamp-1 group-hover:text-primary transition-colors">
-                                  {author.name}
-                                </h4>
-                                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                                  {author.bio.split('\n')[0]}
-                                </p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3" />
-                                    {author.stats.totalBooks} {author.stats.totalBooks === 1 ? 'book' : 'books'}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <Users className="w-3 h-3" />
-                                    {author.stats.followers.toLocaleString()} followers
-                                  </span>
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <div>
+                                  <span className="text-sm">{discussion.userName}</span>
+                                  <span className="text-sm text-muted-foreground"> • {discussion.timestamp}</span>
                                 </div>
-                              </button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full mt-3"
-                                onClick={() => onUnfollowAuthor(author.id)}
-                              >
-                                Unfollow
-                              </Button>
+                              </div>
+                              <div className="mb-2">
+                                <Badge variant="outline" className="text-xs mb-2">
+                                  {discussion.bookTitle} by {discussion.author}
+                                </Badge>
+                              </div>
+                              <p className="text-sm mb-3 line-clamp-2">{discussion.content}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                                  <ThumbsUp className="w-4 h-4" />
+                                  <span>{discussion.likes}</span>
+                                </button>
+                                <button className="flex items-center gap-1 hover:text-primary transition-colors">
+                                  <MessageSquare className="w-4 h-4" />
+                                  <span>{discussion.replies} {discussion.replies === 1 ? 'reply' : 'replies'}</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* My Lists */}
+              {!currentUser.isAdmin && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <List className="w-5 h-5" />
+                        My Lists
+                      </CardTitle>
+                      <CardDescription>Create and manage your custom reading collections</CardDescription>
+                    </div>
+                    <Button 
+                      variant="default"
+                      size="sm"
+                      onClick={() => setIsCreateListOpen(true)}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create List
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                      {/* Default Lists */}
+                      {defaultLists.map((list) => {
+                        const Icon = list.icon;
+                        return (
+                          <div
+                            key={list.id}
+                            className="p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
+                          >
+                            <div className="w-full text-left">
+                              <button 
+                                className="w-full text-left hover:opacity-80 transition-opacity"
+                                onClick={() => onViewList && onViewList(list)}
+                              >
+                                <Icon className="w-6 h-6 text-primary mb-2" />
+                                <h4 className="text-sm mb-1">{list.name}</h4>
+                                <p className="text-2xl">{list.count}</p>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Custom Lists */}
+                      {customLists.map((list) => {
+                        const Icon = list.icon;
+                        return (
+                          <div
+                            key={list.id}
+                            className="relative group p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
+                          >
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <Edit2 className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setEditingListId(list.id);
+                                      setEditListName(list.name);
+                                    }}
+                                  >
+                                    <Edit2 className="w-4 h-4 mr-2" />
+                                    Rename List
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteList(list.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete List
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            <div className="w-full text-left">
+                              <button 
+                                className="w-full text-left hover:opacity-80 transition-opacity"
+                                onClick={() => onViewList && onViewList(list)}
+                              >
+                                <Icon className="w-6 h-6 text-primary mb-2" />
+                                <h4 className="text-sm mb-1 pr-8">{list.name}</h4>
+                                <p className="text-2xl">{list.count}</p>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Followed Authors */}
+              {!currentUser.isAdmin && (
+                <Card>
+                  <CardHeader>
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Followed Authors
+                      </CardTitle>
+                      <CardDescription>
+                        Keep up with your favorite authors
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {followedAuthors.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p className="mb-2">You haven't followed any authors yet</p>
+                        <p className="text-sm">Discover authors and follow them to stay updated</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {followedAuthors.map((author) => (
+                          <div
+                            key={author.id}
+                            className="p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
+                          >
+                            <div className="flex gap-3">
+                              <Avatar className="w-12 h-12 flex-shrink-0 border-2 border-primary/20">
+                                <AvatarImage src={author.avatarUrl} alt={author.name} />
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {author.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <button
+                                  onClick={() => onViewAuthorProfile && onViewAuthorProfile(author.name)}
+                                  className="text-left w-full group"
+                                >
+                                  <h4 className="mb-1 line-clamp-1 group-hover:text-primary transition-colors">
+                                    {author.name}
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                    {author.bio.split('\n')[0]}
+                                  </p>
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <BookOpen className="w-3 h-3" />
+                                      {author.stats.totalBooks} {author.stats.totalBooks === 1 ? 'book' : 'books'}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Users className="w-3 h-3" />
+                                      {author.stats.followers.toLocaleString()} followers
+                                    </span>
+                                  </div>
+                                </button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full mt-3"
+                                  onClick={() => onUnfollowAuthor(author.id)}
+                                >
+                                  Unfollow
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Follow Requests */}
               {followRequests.length > 0 && (
@@ -720,85 +748,87 @@ export function UserDashboard({ onLogout, onLogoClick, onViewNotifications, onVi
               )}
 
               {/* Followed Users */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Following ({followedUsers.length})
-                  </CardTitle>
-                  <CardDescription>
-                    {followedUsers.filter(u => u.status === "requested").length > 0 
-                      ? `${followedUsers.filter(u => u.status === "following").length} following, ${followedUsers.filter(u => u.status === "requested").length} requested`
-                      : "Users you're following"
-                    }
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {followedUsers.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                      <p className="mb-2">You haven't followed any users yet</p>
-                      <p className="text-sm">Discover readers and follow them to see their activity</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {followedUsers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
-                        >
-                          <div className="flex gap-3">
-                            <Avatar className="w-12 h-12 flex-shrink-0 border-2 border-primary/20">
-                              <AvatarImage src={user.avatarUrl} alt={user.username} />
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {user.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <button
-                                onClick={() => onViewUserProfile && onViewUserProfile(user.id)}
-                                className="text-left w-full group"
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="line-clamp-1 group-hover:text-primary transition-colors">
-                                    {user.username}
-                                  </h4>
-                                  {user.status === "requested" && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      Requested
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                                  {user.bio || 'No bio available'}
-                                </p>
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                  <span className="flex items-center gap-1">
-                                    <MessageSquare className="w-3 h-3" />
-                                    {user.stats.totalReviews} reviews
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <BookOpen className="w-3 h-3" />
-                                    {user.stats.booksRead} books
-                                  </span>
-                                </div>
-                              </button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full mt-3"
-                                onClick={() => onUnfollowUser(user.id)}
-                              >
-                                {user.status === "requested" ? "Cancel Request" : "Unfollow"}
-                              </Button>
+              {!currentUser.isAdmin && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Following ({followedUsers.length})
+                    </CardTitle>
+                    <CardDescription>
+                      {followedUsers.filter(u => u.status === "requested").length > 0 
+                        ? `${followedUsers.filter(u => u.status === "following").length} following, ${followedUsers.filter(u => u.status === "requested").length} requested`
+                        : "Users you're following"
+                      }
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {followedUsers.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p className="mb-2">You haven't followed any users yet</p>
+                        <p className="text-sm">Discover readers and follow them to see their activity</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {followedUsers.map((user) => (
+                          <div
+                            key={user.id}
+                            className="p-4 rounded-lg border border-border hover:border-primary transition-colors bg-card"
+                          >
+                            <div className="flex gap-3">
+                              <Avatar className="w-12 h-12 flex-shrink-0 border-2 border-primary/20">
+                                <AvatarImage src={user.avatarUrl} alt={user.username} />
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {user.username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <button
+                                  onClick={() => onViewUserProfile && onViewUserProfile(user.id)}
+                                  className="text-left w-full group"
+                                >
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="line-clamp-1 group-hover:text-primary transition-colors">
+                                      {user.username}
+                                    </h4>
+                                    {user.status === "requested" && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        Requested
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                    {user.bio || 'No bio available'}
+                                  </p>
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <MessageSquare className="w-3 h-3" />
+                                      {user.stats.totalReviews} reviews
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <BookOpen className="w-3 h-3" />
+                                      {user.stats.booksRead} books
+                                    </span>
+                                  </div>
+                                </button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full mt-3"
+                                  onClick={() => onUnfollowUser(user.id)}
+                                >
+                                  {user.status === "requested" ? "Cancel Request" : "Unfollow"}
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
         </main>
       </div>

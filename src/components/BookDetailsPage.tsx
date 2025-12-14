@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookMarked, Star, Share2, ShoppingCart, ExternalLink, Plus, Check, ChevronLeft, TrendingUp, Award, Clock, BookOpen, ChevronDown, BookCheck, Pause, X as XIcon } from "lucide-react";
+import { BookMarked, Star, Share2, ShoppingCart, ExternalLink, Plus, Check, ChevronLeft, TrendingUp, Award, Clock, BookOpen, ChevronDown, BookCheck, Pause, X as XIcon, UserPlus, UserMinus } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -33,6 +33,33 @@ interface Book {
   publishYear: number;
 }
 
+interface Author {
+  id: number;
+  name: string;
+  bio: string;
+  avatarUrl: string;
+  coverImageUrl?: string;
+  books: Array<{
+    id: number;
+    title: string;
+    cover: string;
+    rating: number;
+    publishYear: number;
+  }>;
+  stats: {
+    totalBooks: number;
+    followers: number;
+    avgRating: number;
+    totalRatings: number;
+  };
+  socialLinks?: {
+    website?: string;
+    twitter?: string;
+    instagram?: string;
+  };
+  verified: boolean;
+}
+
 interface BookDetailsPageProps {
   book: Book;
   onBack: () => void;
@@ -56,9 +83,38 @@ interface BookDetailsPageProps {
   helpfulReviews?: { [reviewId: number]: boolean };
   onToggleHelpful?: (reviewId: number) => void;
   onReportSubmit?: (reportType: "user" | "author" | "review" | "book", targetName: string, reason: string, details?: string) => void;
+  onAuthorClick?: (authorName: string) => void;
+  isFollowingAuthor?: boolean;
+  onFollowAuthor?: (author: Author) => void;
+  onUnfollowAuthor?: (authorId: number) => void;
+  getAuthorByName?: (name: string) => Author | null;
+  currentUser?: { isAdmin?: boolean };
 }
 
-export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClick, isUserLoggedIn, onLoginRequired, userLists, setUserLists, userReviews = [], onAddReview, helpfulReviews = {}, onToggleHelpful, onReportSubmit }: BookDetailsPageProps) {
+export function BookDetailsPage(props: BookDetailsPageProps) {
+  const { 
+    book, 
+    onBack, 
+    theme, 
+    onToggleTheme, 
+    onLogoClick, 
+    isUserLoggedIn, 
+    onLoginRequired, 
+    userLists, 
+    setUserLists, 
+    userReviews = [], 
+    onAddReview, 
+    helpfulReviews = {}, 
+    onToggleHelpful, 
+    onReportSubmit, 
+    onAuthorClick, 
+    isFollowingAuthor = false, 
+    onFollowAuthor, 
+    onUnfollowAuthor, 
+    getAuthorByName, 
+    currentUser 
+  } = props;
+  
   const [selectedList, setSelectedList] = useState<string | null>(null);
   const [isListMenuOpen, setIsListMenuOpen] = useState(false);
   const [userRating, setUserRating] = useState<number>(0);
@@ -147,6 +203,12 @@ export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClic
       return;
     }
     
+    // Prevent admins from adding to lists
+    if (currentUser?.isAdmin) {
+      toast.error("Admins cannot add books to reading lists");
+      return;
+    }
+    
     // Check if book is already in list
     const list = userLists.find(l => l.id === listId);
     if (list && list.bookIds.includes(book.id)) {
@@ -181,6 +243,12 @@ export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClic
       return;
     }
     
+    // Prevent admins from rating
+    if (currentUser?.isAdmin) {
+      toast.error("Admins cannot rate books");
+      return;
+    }
+    
     // Update rating (user can change their rating)
     const previousRating = userRating;
     setUserRating(rating);
@@ -201,6 +269,44 @@ export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClic
     // Call the onAddReview callback if provided
     if (onAddReview) {
       onAddReview(rating, reviewText);
+    }
+  };
+
+  const handleFollowAuthor = () => {
+    if (!isUserLoggedIn) {
+      toast.error("Please log in to follow authors");
+      if (onLoginRequired) {
+        setTimeout(() => onLoginRequired(), 1500);
+      }
+      return;
+    }
+    
+    // Prevent admins from following
+    if (currentUser?.isAdmin) {
+      toast.error("Admins cannot follow authors");
+      return;
+    }
+    
+    const author = getAuthorByName?.(book.author);
+    if (author) {
+      onFollowAuthor?.(author);
+      toast.success(`You are now following ${author.name}!`);
+    }
+  };
+
+  const handleUnfollowAuthor = () => {
+    if (!isUserLoggedIn) {
+      toast.error("Please log in to unfollow authors");
+      if (onLoginRequired) {
+        setTimeout(() => onLoginRequired(), 1500);
+      }
+      return;
+    }
+    
+    const author = getAuthorByName?.(book.author);
+    if (author) {
+      onUnfollowAuthor?.(author.id);
+      toast.success(`You have unfollowed ${author.name}!`);
     }
   };
 
@@ -242,47 +348,51 @@ export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClic
               
               {/* Action Buttons */}
               <div className="space-y-3">
-                {userLists.length > 0 ? (
-                  <DropdownMenu open={isListMenuOpen} onOpenChange={setIsListMenuOpen}>
-                    <DropdownMenuTrigger asChild>
+                {!currentUser?.isAdmin && (
+                  <>
+                    {userLists.length > 0 ? (
+                      <DropdownMenu open={isListMenuOpen} onOpenChange={setIsListMenuOpen}>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            className="w-full gap-2" 
+                            size="lg"
+                          >
+                            {selectedList ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                            {selectedList || "Add to List"}
+                            <ChevronDown className="w-4 h-4 ml-auto" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56" align="start">
+                          <DropdownMenuLabel>Choose a list</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {userLists.map((list) => {
+                            const Icon = list.icon;
+                            const isInList = list.bookIds.includes(book.id);
+                            return (
+                              <DropdownMenuItem
+                                key={list.id}
+                                onClick={() => handleAddToList(list.id, list.name)}
+                                className="gap-2"
+                              >
+                                <Icon className="w-4 h-4" />
+                                <span className="flex-1">{list.name}</span>
+                                {isInList && <Check className="w-4 h-4 text-primary" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
                       <Button 
                         className="w-full gap-2" 
                         size="lg"
+                        onClick={() => toast.info("Create a list first from your dashboard!")}
                       >
-                        {selectedList ? <Check className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                        {selectedList || "Add to List"}
-                        <ChevronDown className="w-4 h-4 ml-auto" />
+                        <Plus className="w-5 h-5" />
+                        Add to List
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="start">
-                      <DropdownMenuLabel>Choose a list</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {userLists.map((list) => {
-                        const Icon = list.icon;
-                        const isInList = list.bookIds.includes(book.id);
-                        return (
-                          <DropdownMenuItem
-                            key={list.id}
-                            onClick={() => handleAddToList(list.id, list.name)}
-                            className="gap-2"
-                          >
-                            <Icon className="w-4 h-4" />
-                            <span className="flex-1">{list.name}</span>
-                            {isInList && <Check className="w-4 h-4 text-primary" />}
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Button 
-                    className="w-full gap-2" 
-                    size="lg"
-                    onClick={() => toast.info("Create a list first from your dashboard!")}
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add to List
-                  </Button>
+                    )}
+                  </>
                 )}
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -346,7 +456,34 @@ export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClic
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div className="flex-1">
                   <h1 className="text-3xl md:text-4xl mb-2">{book.title}</h1>
-                  <p className="text-xl text-muted-foreground mb-3">by {book.author}</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <button 
+                      onClick={() => onAuthorClick?.(book.author)}
+                      className="text-xl text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      by {book.author}
+                    </button>
+                    {isUserLoggedIn && !currentUser?.isAdmin && (
+                      <Button
+                        variant={isFollowingAuthor ? "outline" : "default"}
+                        size="sm"
+                        className="gap-2"
+                        onClick={isFollowingAuthor ? handleUnfollowAuthor : handleFollowAuthor}
+                      >
+                        {isFollowingAuthor ? (
+                          <>
+                            <UserMinus className="w-4 h-4" />
+                            Unfollow
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-4 h-4" />
+                            Follow Author
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                   
                   {/* Genre and Tags */}
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -542,6 +679,7 @@ export function BookDetailsPage({ book, onBack, theme, onToggleTheme, onLogoClic
                         isUserLoggedIn={isUserLoggedIn}
                         onLoginRequired={onLoginRequired}
                         onReviewSubmit={handleReviewSubmit}
+                        currentUser={currentUser}
                       />
                     </div>
                   </CardHeader>

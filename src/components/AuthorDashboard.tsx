@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookMarked, TrendingUp, Eye, Star, MessageSquare, Upload, BarChart3, Bell, User, LogOut, Moon, Sun, Edit, Search, Book, Calendar, DollarSign, FileText, Users, Award, BadgeCheck, Settings, BookOpen, Plus, Reply, ThumbsUp, ThumbsDown } from "lucide-react";
+import { BookMarked, TrendingUp, Eye, Star, MessageSquare, Upload, BarChart3, Bell, User, LogOut, Moon, Sun, Edit, Search, Book, Calendar, DollarSign, FileText, Users, Award, BadgeCheck, Settings, BookOpen, Plus, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -33,7 +33,6 @@ interface AuthorDashboardProps {
 
 export function AuthorDashboard({ onLogout, onLogoClick, onViewNotifications, onEditProfile, onViewBookDetails, currentAuthor, theme, onToggleTheme }: AuthorDashboardProps) {
   const [activeTab, setActiveTab] = useState("overview");
-  const [replyText, setReplyText] = useState<{ [key: number]: string }>({});
   const [unreadNotifications] = useState(5);
   const [authorData, setAuthorData] = useState({
     name: "Author Name",
@@ -97,53 +96,38 @@ export function AuthorDashboard({ onLogout, onLogoClick, onViewNotifications, on
       description: "A heartwarming romance that transcends boundaries."
     }
   ]);
-  
-  // Load author data and books from localStorage
-  interface AuthorData {
-  name: string;
-  email: string;
-  avatarUrl?: string;
-}
 
-useEffect(() => {
-  const storedData = localStorage.getItem("authorData");
-  if (storedData) {
-    try {
-      const parsed: Partial<AuthorData> & { profilePicture?: string } = JSON.parse(storedData);
+  // Load author data and books from localStorage
+  useEffect(() => {
+    const storedData = localStorage.getItem("authorData");
+    if (storedData) {
+      const parsed = JSON.parse(storedData);
       setAuthorData({
         name: parsed.name || "Author Name",
         email: parsed.email || "author@email.com",
-        avatarUrl: parsed.avatarUrl || parsed.profilePicture || ""
+        avatarUrl: parsed.profilePicture || parsed.avatarUrl || ""
       });
-    } catch (e) {
-      console.error("Error parsing authorData from localStorage:", e);
+    } else if (currentAuthor) {
       setAuthorData({
-        name: "Author Name",
-        email: "author@email.com",
-        avatarUrl: ""
+        name: currentAuthor.name,
+        email: currentAuthor.email,
+        avatarUrl: currentAuthor.avatarUrl || "",
       });
     }
-  } else if (currentAuthor) {
-    setAuthorData({
-      name: currentAuthor.name,
-      email: currentAuthor.email,
-      avatarUrl: currentAuthor.avatarUrl || ""
-    });
-  }
 
-  const storedBooks = localStorage.getItem("authorBooks");
-  if (storedBooks) {
-    try {
-      const parsedBooks = JSON.parse(storedBooks);
-      if (Array.isArray(parsedBooks) && parsedBooks.length > 0) {
-        setAuthorBooks(parsedBooks);
+    // Load author books from localStorage
+    const storedBooks = localStorage.getItem("authorBooks");
+    if (storedBooks) {
+      try {
+        const parsedBooks = JSON.parse(storedBooks);
+        if (parsedBooks.length > 0) {
+          setAuthorBooks(parsedBooks);
+        }
+      } catch (e) {
+        console.error("Error loading books:", e);
       }
-    } catch (e) {
-      console.error("Error loading authorBooks:", e);
     }
-  }
-}, [currentAuthor]);
-
+  }, [currentAuthor]);
 
   const authorInitials = authorData.name
     .split(" ")
@@ -221,14 +205,6 @@ useEffect(() => {
       positive: 78,
       neutral: 18,
       negative: 4
-    }
-  };
-
-  const handleReply = (reviewId: number) => {
-    if (replyText[reviewId]?.trim()) {
-      console.log(`Reply to review ${reviewId}:`, replyText[reviewId]);
-      setReplyText({ ...replyText, [reviewId]: "" });
-      toast.success("Reply sent successfully!");
     }
   };
 
@@ -330,7 +306,7 @@ useEffect(() => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -342,10 +318,6 @@ useEffect(() => {
             <TabsTrigger value="reviews" className="gap-2">
               <MessageSquare className="w-4 h-4" />
               Reviews
-            </TabsTrigger>
-            <TabsTrigger value="interactions" className="gap-2">
-              <Reply className="w-4 h-4" />
-              Interactions
             </TabsTrigger>
           </TabsList>
 
@@ -794,7 +766,9 @@ useEffect(() => {
             </div>
 
             <div className="space-y-4">
-              {recentReviews.map((review) => (
+              {recentReviews
+                .filter(review => authorBooks.some(book => book.id === review.bookId))
+                .map((review) => (
                 <Card key={review.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -850,87 +824,6 @@ useEffect(() => {
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          </TabsContent>
-
-          {/* Interactions Tab */}
-          <TabsContent value="interactions" className="space-y-6">
-            <div>
-              <h2 className="text-2xl mb-1">Reader Interactions</h2>
-              <p className="text-muted-foreground">Engage with your readers by replying to their comments and reviews</p>
-            </div>
-
-            <div className="space-y-4">
-              {recentReviews.filter(r => r.replies.length === 0).map((review) => (
-                <Card key={review.id}>
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      <Avatar>
-                        <AvatarImage src={review.avatar} />
-                        <AvatarFallback>{review.reader[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-medium">{review.reader}</div>
-                            <div className="text-sm text-muted-foreground">{review.bookTitle}</div>
-                            <div className="flex items-center gap-1 mt-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
-                              ))}
-                            </div>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(review.date).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-muted-foreground">{review.comment}</p>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor={`reply-${review.id}`}>Your Reply</Label>
-                      <Textarea
-                        id={`reply-${review.id}`}
-                        placeholder="Write your reply to the reader..."
-                        value={replyText[review.id] || ""}
-                        onChange={(e) => setReplyText({ ...replyText, [review.id]: e.target.value })}
-                        rows={3}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setReplyText({ ...replyText, [review.id]: "" })}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          className="gap-2"
-                          onClick={() => handleReply(review.id)}
-                        >
-                          <Reply className="w-4 h-4" />
-                          Send Reply
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {recentReviews.filter(r => r.replies.length === 0).length === 0 && (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground text-center">
-                      No pending interactions. You've replied to all recent reviews!
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </TabsContent>
         </Tabs>

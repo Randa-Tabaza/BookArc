@@ -13,16 +13,19 @@ interface WriteReviewDialogProps {
   isUserLoggedIn: boolean;
   onLoginRequired?: () => void;
   onReviewSubmit?: (rating: number, reviewText: string) => void;
+  currentUser?: { isAdmin?: boolean };
 }
 
-export function WriteReviewDialog({ 
-  targetType, 
-  targetName, 
-  onSubmit,
-  isUserLoggedIn,
-  onLoginRequired,
-  onReviewSubmit
-}: WriteReviewDialogProps) {
+export function WriteReviewDialog(props: WriteReviewDialogProps) {
+  const { 
+    targetType, 
+    targetName, 
+    onSubmit,
+    isUserLoggedIn,
+    onLoginRequired,
+    onReviewSubmit,
+    currentUser
+  } = props;
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -36,6 +39,12 @@ export function WriteReviewDialog({
       }
       return;
     }
+    
+    if (newOpen && currentUser?.isAdmin) {
+      toast.error("Admins cannot write reviews");
+      return;
+    }
+    
     setOpen(newOpen);
   };
 

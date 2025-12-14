@@ -52,6 +52,7 @@ interface UserPublicProfilePageProps {
   onToggleTheme: () => void;
   isCurrentUser: boolean;
   isUserLoggedIn: boolean;
+  isAuthorLoggedIn?: boolean;
   onLoginRequired?: () => void;
   isFollowing?: boolean;
   hasRequestedFollow?: boolean;
@@ -60,6 +61,7 @@ interface UserPublicProfilePageProps {
   onCancelRequest?: () => void;
   onEditProfile?: () => void;
   onViewBookDetails?: (bookId: number) => void;
+  currentUser?: { isAdmin?: boolean };
 }
 
 export function UserPublicProfilePage({
@@ -70,6 +72,7 @@ export function UserPublicProfilePage({
   onToggleTheme,
   isCurrentUser,
   isUserLoggedIn,
+  isAuthorLoggedIn = false,
   onLoginRequired,
   isFollowing = false,
   hasRequestedFollow = false,
@@ -78,6 +81,7 @@ export function UserPublicProfilePage({
   onCancelRequest,
   onEditProfile,
   onViewBookDetails,
+  currentUser,
 }: UserPublicProfilePageProps) {
   const [activeTab, setActiveTab] = useState("reviews");
 
@@ -87,6 +91,11 @@ export function UserPublicProfilePage({
         onLoginRequired();
       }
       return;
+    }
+
+    // Prevent admins from following
+    if (currentUser?.isAdmin) {
+      return; // Silently fail since button will be hidden
     }
 
     if (isFollowing && onUnfollowUser) {
@@ -209,14 +218,14 @@ export function UserPublicProfilePage({
                   <div className="flex gap-2">
                     {isCurrentUser ? (
                       <Button onClick={onEditProfile}>Edit Profile</Button>
-                    ) : (
+                    ) : !isAuthorLoggedIn && !currentUser?.isAdmin ? (
                       <Button
                         onClick={handleFollow}
                         variant={followButtonProps.variant}
                       >
                         {followButtonProps.text}
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -255,15 +264,17 @@ export function UserPublicProfilePage({
               <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-20" />
               <h3 className="text-xl mb-2">This Account is Private</h3>
               <p className="text-muted-foreground mb-4">
-                {hasRequestedFollow 
+                {isAuthorLoggedIn
+                  ? `This account is private. Only regular users can follow other users.`
+                  : hasRequestedFollow 
                   ? `Your follow request is pending. Once ${user.username} accepts, you'll be able to see their reviews, ratings, and reading lists.`
                   : `Follow ${user.username} to see their reviews, ratings, and reading lists.`
                 }
               </p>
-              {!isUserLoggedIn && (
+              {!isAuthorLoggedIn && !isUserLoggedIn && (
                 <Button onClick={onLoginRequired}>Log In to Follow</Button>
               )}
-              {isUserLoggedIn && hasRequestedFollow && (
+              {!isAuthorLoggedIn && isUserLoggedIn && hasRequestedFollow && (
                 <Button variant="outline" onClick={handleFollow}>
                   Cancel Request
                 </Button>

@@ -198,12 +198,28 @@ export function AuthorEditProfilePage({ onBack, onLogoClick, currentAuthor, onSa
     const file = e.dataTransfer.files[0];
     
     if (file) {
-      // Create a synthetic event for handleFileChange
-      const syntheticEvent = {
-  target: { files: [file] }
-} as unknown as React.ChangeEvent<HTMLInputElement>;
-handleFileChange(syntheticEvent);
+      setUploadError("");
 
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setUploadError("Please select an image file");
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setUploadError("Image size must be less than 5MB");
+        return;
+      }
+
+      // Read file and convert to base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setUploadedImage(result);
+        setSelectedAvatar(result);
+      };
+      reader.readAsDataURL(file);
     }
   };
 

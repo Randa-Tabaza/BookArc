@@ -63,6 +63,7 @@ interface AuthorPublicProfilePageProps {
   isFollowing?: boolean;
   onFollowAuthor?: (author: Author) => void;
   onUnfollowAuthor?: (authorId: number) => void;
+  currentUser?: { isAdmin?: boolean };
 }
 
 export function AuthorPublicProfilePage({ 
@@ -77,7 +78,8 @@ export function AuthorPublicProfilePage({
   onReportSubmit,
   isFollowing = false,
   onFollowAuthor,
-  onUnfollowAuthor
+  onUnfollowAuthor,
+  currentUser
 }: AuthorPublicProfilePageProps) {
   const [currentBookIndex, setCurrentBookIndex] = useState(0);
   const [booksPerPage] = useState(4);
@@ -127,6 +129,12 @@ export function AuthorPublicProfilePage({
       return;
     }
     
+    // Prevent admins from following
+    if (currentUser?.isAdmin) {
+      toast.error("Admins cannot follow authors");
+      return;
+    }
+    
     // Use parent handlers if provided
     if (isFollowing) {
       if (onUnfollowAuthor) {
@@ -146,6 +154,12 @@ export function AuthorPublicProfilePage({
       if (onLoginRequired) {
         setTimeout(() => onLoginRequired(), 1500);
       }
+      return;
+    }
+    
+    // Prevent admins from rating
+    if (currentUser?.isAdmin) {
+      toast.error("Admins cannot rate authors");
       return;
     }
     
@@ -304,14 +318,16 @@ export function AuthorPublicProfilePage({
                     </div>
 
                     <div className="flex gap-2">
-                      <Button
-                        variant={isFollowing ? "outline" : "default"}
-                        onClick={handleFollow}
-                        className="min-w-[120px]"
-                      >
-                        <Users className="w-4 h-4 mr-2" />
-                        {isFollowing ? "Following" : "Follow"}
-                      </Button>
+                      {!currentUser?.isAdmin && (
+                        <Button
+                          variant={isFollowing ? "outline" : "default"}
+                          onClick={handleFollow}
+                          className="min-w-[120px]"
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          {isFollowing ? "Following" : "Follow"}
+                        </Button>
+                      )}
                       {author.email && (
                         <Button 
                           variant="outline" 
@@ -367,55 +383,6 @@ export function AuthorPublicProfilePage({
                     </div>
                   </div>
 
-                  {/* Social Links */}
-                  {(author.website || author.socialLinks) && (
-                    <div className="flex flex-wrap items-center gap-3">
-                      {author.website && (
-                        <a
-                          href={author.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-primary hover:underline"
-                        >
-                          <LinkIcon className="w-4 h-4" />
-                          Website
-                        </a>
-                      )}
-                      {author.socialLinks?.twitter && (
-                        <a
-                          href={`https://twitter.com/${author.socialLinks.twitter.replace('@', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <Twitter className="w-4 h-4" />
-                          {author.socialLinks.twitter}
-                        </a>
-                      )}
-                      {author.socialLinks?.instagram && (
-                        <a
-                          href={`https://instagram.com/${author.socialLinks.instagram.replace('@', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <Instagram className="w-4 h-4" />
-                          {author.socialLinks.instagram}
-                        </a>
-                      )}
-                      {author.socialLinks?.facebook && (
-                        <a
-                          href={`https://facebook.com/${author.socialLinks.facebook}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-                        >
-                          <Facebook className="w-4 h-4" />
-                          Facebook
-                        </a>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </CardContent>
