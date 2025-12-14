@@ -53,7 +53,8 @@ import { UserPublicProfilePage } from "./components/UserPublicProfilePage";
 import { AdminReportsPage } from "./components/AdminReportsPage";
 import { ListViewPage } from "./components/ListViewPage";
 import { BecomeAuthorDialog } from "./components/BecomeAuthorDialog";
-import { toast } from "sonner@2.0.3";
+import { UserSettingsPage } from "./components/UserSettingsPage";
+import { toast } from "sonner";
 
 interface Book {
   id: number;
@@ -436,6 +437,12 @@ export default function App() {
     reason: string,
     details?: string
   ) => {
+    // Prevent admins from submitting reports
+    if (currentUser.isAdmin) {
+      toast.error("Admins cannot submit reports");
+      return;
+    }
+    
     const typeMap = {
       user: "User Report" as const,
       author: "Author Report" as const,
@@ -479,6 +486,18 @@ export default function App() {
 
   // Function to follow an author
   const handleFollowAuthor = (author: Author) => {
+    // Prevent admins from following
+    if (currentUser.isAdmin) {
+      toast.error("Admins cannot follow authors");
+      return;
+    }
+    
+    // Prevent authors from following themselves
+    if (isAuthorLoggedIn && author.email === currentAuthor.email) {
+      toast.error("You cannot follow yourself");
+      return;
+    }
+    
     const isAlreadyFollowing = followedAuthors.some(a => a.id === author.id);
     
     if (!isAlreadyFollowing) {
@@ -505,8 +524,39 @@ export default function App() {
     }
   };
 
+  // Function to toggle user privacy
+  const handleTogglePrivacy = () => {
+    // Prevent admins from changing privacy settings
+    if (currentUser.isAdmin) {
+      toast.error("Admin profiles are always private and cannot be changed");
+      return;
+    }
+    
+    setCurrentUser((prev) => {
+      const newPrivacy = !prev.isPrivate;
+      toast.success(
+        newPrivacy 
+          ? "Your profile is now private. Users must send follow requests." 
+          : "Your profile is now public. Anyone can see your activity."
+      );
+      return { ...prev, isPrivate: newPrivacy };
+    });
+  };
+
   // Function to follow a user
   const handleFollowUser = (userId: number) => {
+    // Prevent admins from following
+    if (currentUser.isAdmin) {
+      toast.error("Admins cannot follow users");
+      return;
+    }
+    
+    // Authors can only follow other authors, not regular users
+    if (isAuthorLoggedIn) {
+      toast.error("Authors can only follow other authors");
+      return;
+    }
+    
     const user = mockUsers.find(u => u.id === userId);
     
     if (!user) return;
@@ -1084,12 +1134,14 @@ export default function App() {
               req => req.userEmail === userData.email
             );
             const verificationStatus = userVerificationRequest?.status || null;
+            const isAdmin = userData.email === "lendaranda@gmail.com" || userData.email === "omar@gmail.com";
             
             setCurrentUser({ 
               ...userData, 
               avatarUrl: "",
               verificationStatus: verificationStatus,
-              isAdmin: userData.email === "lendaranda@gmail.com"  // Only this email gets admin access
+              isAdmin: isAdmin,
+              isPrivate: isAdmin ? true : userData.isPrivate  // Admin profiles are always private
             });
             setIsUserLoggedIn(true);
             setCurrentPage("dashboard");
@@ -1113,12 +1165,14 @@ export default function App() {
               req => req.userEmail === userData.email
             );
             const verificationStatus = userVerificationRequest?.status || null;
+            const isAdmin = userData.email === "lendaranda@gmail.com" || userData.email === "omar@gmail.com";
             
             setCurrentUser({ 
               ...userData, 
               avatarUrl: "",
               verificationStatus: verificationStatus,
-              isAdmin: userData.email === "lendaranda@gmail.com"  // Only this email gets admin access
+              isAdmin: isAdmin,
+              isPrivate: isAdmin ? true : userData.isPrivate  // Admin profiles are always private
             });
             setIsUserLoggedIn(true);
             setCurrentPage("dashboard");
@@ -1216,6 +1270,7 @@ export default function App() {
           }
           onViewChat={() => setCurrentPage("chat")}
           onEditProfile={() => setCurrentPage("edit-profile")}
+          onViewSettings={() => setCurrentPage("settings")}
           onViewBookDetails={(bookId) => {
             setSelectedBookId(bookId);
             setPreviousPage("home");
@@ -1403,6 +1458,7 @@ export default function App() {
           isFollowing={followedAuthors.some(a => a.id === selectedAuthorId)}
           onFollowAuthor={handleFollowAuthor}
           onUnfollowAuthor={handleUnfollowAuthor}
+          currentUser={currentUser}
         />
         <Toaster />
       </>
@@ -1410,10 +1466,13 @@ export default function App() {
   }
 
   if (currentPage === "book-details" && selectedBookId) {
+    const book = getBookById(selectedBookId);
+    const bookAuthor = getAuthorProfile(book.author);
+    
     return (
       <>
         <BookDetailsPage
-          book={getBookById(selectedBookId)}
+          book={book}
           onBack={() => setCurrentPage(previousPage)}
           onLogoClick={() => setCurrentPage("home")}
           isUserLoggedIn={isUserLoggedIn}
@@ -1427,6 +1486,16 @@ export default function App() {
           helpfulReviews={helpfulReviews}
           onToggleHelpful={handleToggleHelpful}
           onReportSubmit={handleReportSubmit}
+          onAuthorClick={(authorName) => {
+            const authorProfile = getAuthorProfile(authorName);
+            setSelectedAuthorId(authorProfile.id);
+            setCurrentPage("author-profile");
+          }}
+          isFollowingAuthor={followedAuthors.some(a => a.id === bookAuthor.id)}
+          onFollowAuthor={handleFollowAuthor}
+          onUnfollowAuthor={handleUnfollowAuthor}
+          getAuthorByName={getAuthorProfile}
+          currentUser={currentUser}
         />
         <Toaster />
       </>
@@ -1503,6 +1572,19 @@ export default function App() {
     );
   }
 
+  if (currentPage === "settings") {
+    return (
+      <UserSettingsPage
+        onBack={() => setCurrentPage("dashboard")}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        isPrivate={currentUser.isPrivate}
+        onTogglePrivacy={handleTogglePrivacy}
+        userName={currentUser.name}
+      />
+    );
+  }
+
   if (currentPage === "list-view" && selectedListName) {
     const allBooks = [...trendingBooks, ...newReleases];
 
@@ -1562,6 +1644,7 @@ export default function App() {
           onToggleTheme={toggleTheme}
           isCurrentUser={selectedUserId === currentUser.id}
           isUserLoggedIn={isUserLoggedIn}
+          isAuthorLoggedIn={isAuthorLoggedIn}
           onLoginRequired={() => setCurrentPage("login")}
           isFollowing={followedUsers.some(u => u.id === selectedUserId && u.status === "following")}
           hasRequestedFollow={followedUsers.some(u => u.id === selectedUserId && u.status === "requested")}
@@ -1574,6 +1657,7 @@ export default function App() {
             setPreviousPage("user-profile");
             setCurrentPage("book-details");
           }}
+          currentUser={currentUser}
         />
         <Toaster />
       </>
@@ -1731,14 +1815,16 @@ export default function App() {
                 )}
               </>
             )}
-            <Button
-              size="sm"
-              className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-background border-2 border-yellow-400"
-              onClick={() => setCurrentPage("subscription")}
-            >
-              <Crown className="w-4 h-4" />
-              Premium
-            </Button>
+            {(!isUserLoggedIn || !currentUser?.isAdmin) && (
+              <Button
+                size="sm"
+                className="flex items-center gap-2 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-background border-2 border-yellow-400"
+                onClick={() => setCurrentPage("subscription")}
+              >
+                <Crown className="w-4 h-4" />
+                Premium
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -1810,16 +1896,18 @@ export default function App() {
                     Become an Author
                   </Button>
                 )}
-                <Button
-                  className="w-full justify-start bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-background border-2 border-yellow-400"
-                  onClick={() => {
-                    setCurrentPage("subscription");
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <Crown className="w-4 h-4 mr-2" />
-                  Premium
-                </Button>
+                {(!isUserLoggedIn || !currentUser?.isAdmin) && (
+                  <Button
+                    className="w-full justify-start bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-background border-2 border-yellow-400"
+                    onClick={() => {
+                      setCurrentPage("subscription");
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <Crown className="w-4 h-4 mr-2" />
+                    Premium
+                  </Button>
+                )}
               </div>
             </div>
           </div>
